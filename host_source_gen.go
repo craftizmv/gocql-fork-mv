@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
-
-	"github.com/gocql/gocql"
 )
 
 func gen(clause, field string) {

@@ -19,8 +19,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gocql/gocql/internal/lru"
-	"github.com/gocql/gocql/internal/streams"
+	"github.com/craftizmv/gocql-fork-mv/internal/lru"
+	"github.com/craftizmv/gocql-fork-mv/internal/streams"
 )
 
 var (
@@ -44,8 +44,8 @@ func approve(authenticator string) bool {
 	return false
 }
 
-//JoinHostPort is a utility to return a address string that can be used
-//gocql.Conn to form a connection with a host.
+// JoinHostPort is a utility to return a address string that can be used
+// gocql.Conn to form a connection with a host.
 func JoinHostPort(addr string, port int) string {
 	addr = strings.TrimSpace(addr)
 	if _, _, err := net.SplitHostPort(addr); err != nil {
@@ -1035,6 +1035,7 @@ func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer)
 
 	select {
 	case <-ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-Mayank -> query_executer -> In Cond3-> Context Done received from the caller.")
 		return nil, ctx.Err()
 	case <-flight.done:
 		return flight.preparedStatment, flight.err
@@ -1091,6 +1092,7 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 		var err error
 		info, err = c.prepareStatement(ctx, qry.stmt, qry.trace)
 		if err != nil {
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer -> In Cond2", "err", err.Error())
 			return &Iter{err: err}
 		}
 

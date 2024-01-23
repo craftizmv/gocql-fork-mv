@@ -57,6 +57,7 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	// it is, we force the policy to NonSpeculative
 	sp := qry.speculativeExecutionPolicy()
 	if !qry.IsIdempotent() || sp.Attempts() == 0 {
+		Logger.Printf("gocql: KS-DIGG -> query_executer -> In Cond1")
 		return q.do(qry.Context(), qry), nil
 	}
 
