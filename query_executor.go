@@ -43,6 +43,7 @@ func (q *queryExecutor) speculate(ctx context.Context, qry ExecutableQuery, sp S
 		case <-ticker.C:
 			go q.run(ctx, qry, results)
 		case <-ctx.Done():
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer -> speculate", "err-reason", ctx.Err())
 			return &Iter{err: ctx.Err()}
 		case iter := <-results:
 			return iter
@@ -80,6 +81,7 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	case iter := <-results:
 		return iter, nil
 	case <-ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer -> cond1-2")
 		return &Iter{err: ctx.Err()}, nil
 	}
 }
@@ -158,5 +160,6 @@ func (q *queryExecutor) run(ctx context.Context, qry ExecutableQuery, results ch
 	select {
 	case results <- q.do(ctx, qry):
 	case <-ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer run -> cond1")
 	}
 }

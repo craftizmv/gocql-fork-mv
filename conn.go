@@ -341,9 +341,10 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 			if err != nil {
 				select {
 				case startupErr <- err:
+					Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received")
 				case <-ctx.Done():
+					Logger.Printf("gocql: KS-DIGG-MAYANK -> setupConn, ctx Done")
 				}
-
 				return
 			}
 		}
@@ -354,16 +355,22 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 		err := s.options(ctx)
 		select {
 		case startupErr <- err:
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received -2")
 		case <-ctx.Done():
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> setupConn, ctx Done - 2")
 		}
 	}()
 
 	select {
 	case err := <-startupErr:
 		if err != nil {
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received -3", "err", err)
 			return err
+		} else {
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received -3 - nil err")
 		}
 	case <-ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> setupConn, ctx Done - 3")
 		return errors.New("gocql: no response to connection startup within timeout")
 	}
 
@@ -374,6 +381,7 @@ func (s *startupCoordinator) write(ctx context.Context, frame frameWriter) (fram
 	select {
 	case s.frameTicker <- struct{}{}:
 	case <-ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> write, ctx Done", "err", ctx.Err())
 		return nil, ctx.Err()
 	}
 
@@ -564,8 +572,11 @@ func (c *Conn) heartBeat(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> hearbeat, ctx Done", "err", ctx.Err())
 			return
 		case <-timer.C:
+			//durationInSec := time.Now().Sub(t).Seconds()
+			//Logger.Printf("gocql: KS-DIGG-MAYANK -> hearbeat, timer", "time-sec", durationInSec)
 		}
 
 		framer, err := c.exec(context.Background(), &writeOptionsFrame{}, nil)
@@ -676,9 +687,12 @@ func (c *Conn) recv(ctx context.Context) error {
 	// connection has closed. Either way we should never block indefinatly here
 	select {
 	case call.resp <- err:
-	case <-call.timeout:
+		//Logger.Printf("gocql: KS-DIGG-MAYANK -> receive err", "err", err)
+	case t := <-call.timeout:
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> receive timeout", "time", t)
 		c.releaseStream(call)
 	case <-ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> receive, ctx Done", "err", ctx.Err())
 	}
 
 	return nil
@@ -925,16 +939,20 @@ func (c *Conn) exec(ctx context.Context, req frameWriter, tracer Tracer) (*frame
 				// connection to close.
 				c.releaseStream(call)
 			}
+			Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, err received", "err", err)
 			return nil, err
 		}
-	case <-timeoutCh:
+	case t := <-timeoutCh:
 		close(call.timeout)
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, timeout", "time", t)
 		c.handleTimeout()
 		return nil, ErrTimeoutNoResponse
 	case <-ctxDone:
 		close(call.timeout)
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, ctx done", "err", ctx.Err())
 		return nil, ctx.Err()
 	case <-c.ctx.Done():
+		Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, ctx conn closed", "err", c.ctx.Err())
 		return nil, ErrConnectionClosed
 	}
 
@@ -1038,6 +1056,7 @@ func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer)
 		Logger.Printf("gocql: KS-DIGG-Mayank -> query_executer -> In Cond3-> Context Done received from the caller.")
 		return nil, ctx.Err()
 	case <-flight.done:
+		Logger.Printf("gocql: KS-DIGG-Mayank -> query_executer -> inflight done", "err", flight.err)
 		return flight.preparedStatment, flight.err
 	}
 }
@@ -1422,8 +1441,10 @@ func (c *Conn) awaitSchemaAgreement(ctx context.Context) (err error) {
 	cont:
 		select {
 		case <-ctx.Done():
+			Logger.Printf("gocql: KS-DIGG-Mayank -> awaitSchema, ctx done", "err", ctx.Err())
 			return ctx.Err()
 		case <-time.After(200 * time.Millisecond):
+			Logger.Printf("gocql: KS-DIGG-Mayank -> awaitSchema, timeout reached 200 ms")
 		}
 	}
 
