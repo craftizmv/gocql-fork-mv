@@ -341,9 +341,9 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 			if err != nil {
 				select {
 				case startupErr <- err:
-					Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received")
+					Logger.Printf("gocql: KS-DIGG-> startup err received")
 				case <-ctx.Done():
-					Logger.Printf("gocql: KS-DIGG-MAYANK -> setupConn, ctx Done")
+					Logger.Printf("gocql: KS-DIGG-> setupConn, ctx Done")
 				}
 				return
 			}
@@ -355,22 +355,24 @@ func (s *startupCoordinator) setupConn(ctx context.Context) error {
 		err := s.options(ctx)
 		select {
 		case startupErr <- err:
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received -2")
+			//Logger.Printf("gocql: KS-DIGG-> startup err received -2")
+			// above passed error is most of the time nil.
 		case <-ctx.Done():
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> setupConn, ctx Done - 2")
+			Logger.Printf("gocql: KS-DIGG-> setupConn, ctx Done - 2")
 		}
 	}()
 
 	select {
 	case err := <-startupErr:
 		if err != nil {
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received -3", "err", err)
+			Logger.Printf("gocql: KS-DIGG-> startup err received -3", "err", err)
 			return err
 		} else {
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> startup err received -3 - nil err")
+			// It is normal scenario - not an error, Removing the logging.
+			//Logger.Printf("gocql: KS-DIGG-> startup err received -3 - nil err")
 		}
 	case <-ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> setupConn, ctx Done - 3")
+		Logger.Printf("gocql: KS-DIGG-> setupConn, ctx Done - 3")
 		return errors.New("gocql: no response to connection startup within timeout")
 	}
 
@@ -381,7 +383,7 @@ func (s *startupCoordinator) write(ctx context.Context, frame frameWriter) (fram
 	select {
 	case s.frameTicker <- struct{}{}:
 	case <-ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> write, ctx Done", "err", ctx.Err())
+		Logger.Printf("gocql: KS-DIGG-> write, ctx Done", "err", ctx.Err())
 		return nil, ctx.Err()
 	}
 
@@ -572,11 +574,11 @@ func (c *Conn) heartBeat(ctx context.Context) {
 
 		select {
 		case <-ctx.Done():
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> hearbeat, ctx Done", "err", ctx.Err())
+			Logger.Printf("gocql: KS-DIGG-> hearbeat, ctx Done", "err", ctx.Err())
 			return
 		case <-timer.C:
-			//durationInSec := time.Now().Sub(t).Seconds()
-			//Logger.Printf("gocql: KS-DIGG-MAYANK -> hearbeat, timer", "time-sec", durationInSec)
+			////durationInSec := time.Now().Sub(t).Seconds()
+			////Logger.Printf("gocql: KS-DIGG-> hearbeat, timer", "time-sec", durationInSec)
 		}
 
 		framer, err := c.exec(context.Background(), &writeOptionsFrame{}, nil)
@@ -646,7 +648,7 @@ func (c *Conn) recv(ctx context.Context) error {
 		go c.session.handleEvent(framer)
 		return nil
 	} else if head.stream <= 0 {
-		// reserved stream that we dont use, probably due to a protocol error
+		// reserved stream that we don't use, probably due to a protocol error
 		// or a bug in Cassandra, this should be an error, parse it and return.
 		framer := newFramer(c, c, c.compressor, c.version)
 		if err := framer.readFrame(&head); err != nil {
@@ -687,12 +689,12 @@ func (c *Conn) recv(ctx context.Context) error {
 	// connection has closed. Either way we should never block indefinatly here
 	select {
 	case call.resp <- err:
-		//Logger.Printf("gocql: KS-DIGG-MAYANK -> receive err", "err", err)
+		//Logger.Printf("gocql: KS-DIGG-> receive err", "err", err)
 	case t := <-call.timeout:
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> receive timeout", "time", t)
+		Logger.Printf("gocql: KS-DIGG-> receive timeout", "time", t)
 		c.releaseStream(call)
 	case <-ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> receive, ctx Done", "err", ctx.Err())
+		Logger.Printf("gocql: KS-DIGG-> receive, ctx Done", "err", ctx.Err())
 	}
 
 	return nil
@@ -939,20 +941,20 @@ func (c *Conn) exec(ctx context.Context, req frameWriter, tracer Tracer) (*frame
 				// connection to close.
 				c.releaseStream(call)
 			}
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, err received", "err", err)
+			Logger.Printf("gocql: KS-DIGG-> exec, err received", "err", err)
 			return nil, err
 		}
 	case t := <-timeoutCh:
 		close(call.timeout)
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, timeout", "time", t)
+		Logger.Printf("gocql: KS-DIGG-> exec, timeout", "time", t)
 		c.handleTimeout()
 		return nil, ErrTimeoutNoResponse
 	case <-ctxDone:
 		close(call.timeout)
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, ctx done", "err", ctx.Err())
+		Logger.Printf("gocql: KS-DIGG-> exec, ctx done", "err", ctx.Err())
 		return nil, ctx.Err()
 	case <-c.ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> exec, ctx conn closed", "err", c.ctx.Err())
+		Logger.Printf("gocql: KS-DIGG-> exec, ctx conn closed", "err", c.ctx.Err())
 		return nil, ErrConnectionClosed
 	}
 
@@ -1053,10 +1055,9 @@ func (c *Conn) prepareStatement(ctx context.Context, stmt string, tracer Tracer)
 
 	select {
 	case <-ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-Mayank -> query_executer -> In Cond3-> Context Done received from the caller.")
+		Logger.Printf("gocql: KS-DIGG -> query_executer -> In Cond3-> Context Done received from the caller.")
 		return nil, ctx.Err()
 	case <-flight.done:
-		Logger.Printf("gocql: KS-DIGG-Mayank -> query_executer -> inflight done", "err", flight.err)
 		return flight.preparedStatment, flight.err
 	}
 }
@@ -1111,7 +1112,8 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 		var err error
 		info, err = c.prepareStatement(ctx, qry.stmt, qry.trace)
 		if err != nil {
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer -> In Cond2", "err", err.Error())
+			Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> error while preparing statement. err is %+v", err)
+			Logger.Print("gocql: KS-DIGG-> query_executer:conn -> error while preparing statement-2", "err", err.Error())
 			return &Iter{err: err}
 		}
 
@@ -1123,13 +1125,14 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 				Rval:        info.response.columns,
 				PKeyColumns: info.request.pkeyColumns,
 			})
-
 			if err != nil {
+				Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> error while query binding %+v", err)
 				return &Iter{err: err}
 			}
 		}
 
 		if len(values) != info.request.actualColCount {
+			Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> gocql: expected %d values send got %d", info.request.actualColCount, len(values))
 			return &Iter{err: fmt.Errorf("gocql: expected %d values send got %d", info.request.actualColCount, len(values))}
 		}
 
@@ -1139,6 +1142,7 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 			value := values[i]
 			typ := info.request.columns[i].TypeInfo
 			if err := marshalQueryValue(typ, value, v); err != nil {
+				Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> gocql: expected %d values send got %d", info.request.actualColCount, len(values))
 				return &Iter{err: err}
 			}
 		}
@@ -1160,11 +1164,13 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 
 	framer, err := c.exec(ctx, frame, qry.trace)
 	if err != nil {
+		Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> error while executing frame %+v", err)
 		return &Iter{err: err}
 	}
 
 	resp, err := framer.parseFrame()
 	if err != nil {
+		Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> error while parsing frame %+v", err)
 		return &Iter{err: err}
 	}
 
@@ -1187,7 +1193,9 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 				iter.meta = info.response
 				iter.meta.pagingState = copyBytes(x.meta.pagingState)
 			} else {
-				return &Iter{framer: framer, err: errors.New("gocql: did not receive metadata but prepared info is nil")}
+				nErr := errors.New("gocql: did not receive metadata but prepared info is nil")
+				Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> error while query binding %+v", nErr)
+				return &Iter{framer: framer, err: nErr}
 			}
 		} else {
 			iter.meta = x.meta
@@ -1221,12 +1229,16 @@ func (c *Conn) executeQuery(ctx context.Context, qry *Query) *Iter {
 	case *RequestErrUnprepared:
 		stmtCacheKey := c.session.stmtsLRU.keyFor(c.addr, c.currentKeyspace, qry.stmt)
 		c.session.stmtsLRU.evictPreparedID(stmtCacheKey, x.StatementId)
+		Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> RequestErrUnprepared")
 		return c.executeQuery(ctx, qry)
 	case error:
+		Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> Error case, err : %+v", x)
 		return &Iter{err: x, framer: framer}
 	default:
+		nErr := NewErrProtocol("Unknown type in response to execute query (%T): %s", x, x)
+		Logger.Printf("gocql: KS-DIGG-> query_executer:conn -> Default case, unknown type error : %+v", nErr)
 		return &Iter{
-			err:    NewErrProtocol("Unknown type in response to execute query (%T): %s", x, x),
+			err:    nErr,
 			framer: framer,
 		}
 	}
@@ -1441,10 +1453,10 @@ func (c *Conn) awaitSchemaAgreement(ctx context.Context) (err error) {
 	cont:
 		select {
 		case <-ctx.Done():
-			Logger.Printf("gocql: KS-DIGG-Mayank -> awaitSchema, ctx done", "err", ctx.Err())
+			Logger.Printf("gocql: KS-DIGG -> awaitSchema, ctx done", "err", ctx.Err())
 			return ctx.Err()
 		case <-time.After(200 * time.Millisecond):
-			Logger.Printf("gocql: KS-DIGG-Mayank -> awaitSchema, timeout reached 200 ms")
+			Logger.Printf("gocql: KS-DIGG -> awaitSchema, timeout reached 200 ms")
 		}
 	}
 

@@ -43,7 +43,7 @@ func (q *queryExecutor) speculate(ctx context.Context, qry ExecutableQuery, sp S
 		case <-ticker.C:
 			go q.run(ctx, qry, results)
 		case <-ctx.Done():
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer -> speculate", "err-reason", ctx.Err())
+			Logger.Printf("gocql: KS-DIGG-> query_executer -> speculate", "err-reason", ctx.Err())
 			return &Iter{err: ctx.Err()}
 		case iter := <-results:
 			return iter
@@ -58,7 +58,7 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	// it is, we force the policy to NonSpeculative
 	sp := qry.speculativeExecutionPolicy()
 	if !qry.IsIdempotent() || sp.Attempts() == 0 {
-		Logger.Printf("gocql: KS-DIGG -> query_executer -> In Cond1")
+		//Logger.Printf("gocql: KS-DIGG -> query_executer -> In Cond1")
 		return q.do(qry.Context(), qry), nil
 	}
 
@@ -81,7 +81,7 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	case iter := <-results:
 		return iter, nil
 	case <-ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer -> cond1-2")
+		Logger.Printf("gocql: KS-DIGG-> query_executer -> cond1-2")
 		return &Iter{err: ctx.Err()}, nil
 	}
 }
@@ -112,6 +112,7 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery) *Iter {
 			continue
 		}
 
+		// MV -  Below is the func which makes the final query.
 		iter = q.attemptQuery(ctx, qry, conn)
 		iter.host = selectedHost.Info()
 		// Update host
@@ -160,6 +161,6 @@ func (q *queryExecutor) run(ctx context.Context, qry ExecutableQuery, results ch
 	select {
 	case results <- q.do(ctx, qry):
 	case <-ctx.Done():
-		Logger.Printf("gocql: KS-DIGG-MAYANK -> query_executer run -> cond1")
+		Logger.Printf("gocql: KS-DIGG-> query_executer run -> cond1")
 	}
 }

@@ -323,7 +323,7 @@ func (s *Session) reconnectDownedHosts(intv time.Duration) {
 				s.handleNodeUp(h.ConnectAddress(), h.Port(), true)
 			}
 		case <-s.ctx.Done():
-			Logger.Printf("gocql: KS-DIGG-MAYANK -> session -> reconnectDownedHosts...")
+			Logger.Printf("gocql: KS-DIGG-> session -> reconnectDownedHosts...")
 			return
 		}
 	}
@@ -441,14 +441,18 @@ func (s *Session) Closed() bool {
 func (s *Session) executeQuery(qry *Query) (it *Iter) {
 	// fail fast
 	if s.Closed() {
+		Logger.Printf("gocql: KS-DIGG -> executeQuery, session is closed")
 		return &Iter{err: ErrSessionClosed}
 	}
 
 	iter, err := s.executor.executeQuery(qry)
 	if err != nil {
+		Logger.Printf("gocql: KS-DIGG -> executeQuery, final result %+v", err)
 		return &Iter{err: err}
 	}
+
 	if iter == nil {
+		Logger.Printf("gocql: KS-DIGG -> executeQuery, iterator is nil")
 		panic("nil iter")
 	}
 
