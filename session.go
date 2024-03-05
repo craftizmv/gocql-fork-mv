@@ -119,9 +119,9 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 
 	s := &Session{
 		cons:            cfg.Consistency,
-		prefetch:        0.25,
+		prefetch:        0.25, // TODO-MV : set it to .95 to prefetch earlier.
 		cfg:             cfg,
-		pageSize:        cfg.PageSize,
+		pageSize:        cfg.PageSize, // TODO-MV : Increase the page size to 5000.
 		stmtsLRU:        &preparedLRU{lru: lru.New(cfg.MaxPreparedStmts)},
 		connectObserver: cfg.ConnectObserver,
 		ctx:             ctx,
@@ -146,8 +146,9 @@ func NewSession(cfg ClusterConfig) (*Session, error) {
 	s.policy.Init(s)
 
 	s.executor = &queryExecutor{
-		pool:   s.pool,
-		policy: cfg.PoolConfig.HostSelectionPolicy,
+		pool:    s.pool,
+		policy:  cfg.PoolConfig.HostSelectionPolicy,
+		isAwsKs: cfg.isAwsKs,
 	}
 
 	s.queryObserver = cfg.QueryObserver

@@ -151,6 +151,9 @@ type ClusterConfig struct {
 
 	// internal config for testing
 	disableControlConn bool
+
+	// represent if the fetch is from AWS Ks DB.
+	isAwsKs bool
 }
 
 type Dialer interface {

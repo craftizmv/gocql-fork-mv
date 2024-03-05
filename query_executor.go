@@ -20,8 +20,9 @@ type ExecutableQuery interface {
 }
 
 type queryExecutor struct {
-	pool   *policyConnPool
-	policy HostSelectionPolicy
+	pool    *policyConnPool
+	policy  HostSelectionPolicy
+	isAwsKs bool
 }
 
 func (q *queryExecutor) attemptQuery(ctx context.Context, qry ExecutableQuery, conn *Conn) *Iter {
@@ -58,7 +59,9 @@ func (q *queryExecutor) executeQuery(qry ExecutableQuery) (*Iter, error) {
 	// it is, we force the policy to NonSpeculative
 	sp := qry.speculativeExecutionPolicy()
 	if !qry.IsIdempotent() || sp.Attempts() == 0 {
-		//Logger.Printf("gocql: KS-DIGG -> query_executer -> In Cond1")
+		if q.isAwsKs {
+			Logger.Printf("gocql: KS-DIGG -> query_executer --> Going to execute query for KS")
+		}
 		return q.do(qry.Context(), qry), nil
 	}
 
@@ -120,9 +123,15 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery) *Iter {
 		case context.Canceled, context.DeadlineExceeded, ErrNotFound:
 			// those errors represents logical errors, they should not count
 			// toward removing a node from the pool
+			if q.isAwsKs && selectedHost != nil && selectedHost.Info() != nil {
+				Logger.Printf("gocql: KS-DIGG -> query_executer --> err with host %s", selectedHost.Info().hostname, selectedHost.Info().dataCenter)
+			}
 			selectedHost.Mark(nil)
 			return iter
 		default:
+			if q.isAwsKs && selectedHost != nil && selectedHost.Info() != nil {
+				Logger.Printf("gocql: KS-DIGG -> query_executer --> err with host %s, DC : %s", selectedHost.Info().hostname, selectedHost.Info().dataCenter, "err", iter.err)
+			}
 			selectedHost.Mark(iter.err)
 		}
 
@@ -146,14 +155,23 @@ func (q *queryExecutor) do(ctx context.Context, qry ExecutableQuery) *Iter {
 			continue
 		default:
 			// Undefined? Return nil and error, this will panic in the requester
+			if q.isAwsKs {
+				Logger.Printf("gocql: KS-DIGG -> query_executer --> ErrUnknownRetryType")
+			}
 			return &Iter{err: ErrUnknownRetryType}
 		}
 	}
 
 	if lastErr != nil {
+		if q.isAwsKs {
+			Logger.Printf("gocql: KS-DIGG -> query_executer --> lastErr is %s", lastErr.Error())
+		}
 		return &Iter{err: lastErr}
 	}
 
+	if q.isAwsKs {
+		Logger.Printf("gocql: KS-DIGG -> query_executer --> lastErr is ErrNoConnections")
+	}
 	return &Iter{err: ErrNoConnections}
 }
 
